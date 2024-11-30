@@ -1,0 +1,4 @@
+#pyTelegramBotAPI>=4.12.0  # Для работы с telebot
+python-telegram-bot>=20.0
+#aiohttp>=3.8
+sqlalchemy==2.0.21
