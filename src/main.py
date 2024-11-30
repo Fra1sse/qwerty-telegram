@@ -1,4 +1,5 @@
 
+
 import asyncio
 import aiohttp
 import json
@@ -29,56 +30,14 @@ async def stream_request_to_api(user_message, user_id):
     """
     Асинхронно отправляет стриминговый HTTP POST-запрос к API с сообщением пользователя.
     """
-    api_url = "http://37.194.195.213:35411/v1/chat/completions"
+    api_url = "http://37.194.195.213:35420/query"
     payload = {
-        "model": "saiga",
+        
         "messages": [
-            {
-                "role": "user",
-                "content": user_message
-            }
-        ],
-        "stream": True,
-        "max_tokens": 500,
-        "temperature": 0.3,
-        "top_p": 1,
-        "typical_p": 1,
-        "typical": 1,
-        "min_p": 0.07,
-        "repetition_penalty": 1,
-        "frequency_penalty": 0,
-        "presence_penalty": 0,
-        "top_k": 0,
-        "skew": 0,
-        "min_length": 0,
-        "min_tokens": 0,
-        "num_beams": 1,
-        "length_penalty": 1,
-        "early_stopping": False,
-        "add_bos_token": True,
-        "smoothing_factor": 0,
-        "smoothing_curve": 1,
-        "dry_allowed_length": 2,
-        "dry_multiplier": 0,
-        "dry_base": 1.75,
-        "dry_sequence_breakers": ["\n", ":", "\"", "*"],
-        "dry_penalty_last_n": 0,
-        "top_a": 0,
-        "tfs": 1,
-        "epsilon_cutoff": 0,
-        "eta_cutoff": 0,
-        "mirostat_mode": 0,
-        "mirostat_tau": 5,
-        "mirostat_eta": 0.1,
-        "xtc_threshold": 0.1,
-        "xtc_probability": 0,
-        "rep_pen": 1,
-        "rep_pen_range": 0,
-        "repetition_penalty_range": 0,
-        "encoder_repetition_penalty": 1,
-        "no_repeat_ngram_size": 0,
-        "num_predict": 500,
-        "num_ctx": 4096
+            { "role": 'user', "content": user_message }
+          ],
+          "max_tokens" : 300,
+        
     }
     headers = {
         "Content-Type": "application/json"
@@ -95,15 +54,14 @@ async def stream_request_to_api(user_message, user_id):
                     decoded_line = line.decode('utf-8').strip()
                     if decoded_line.startswith('data: '):
                         try:
-                            json_str = decoded_line[6:].strip()
+                            json_str = decoded_line[6:]
                             if json_str == '[DONE]':
                                 break
+                            #chunk = json.loads(json_str)
+                            #delta = chunk['choices'][0]['delta'].get('content', '')
                             print(json_str)
-                            chunk = json.loads(json_str)
-                            delta = chunk['choices'][0]['delta'].get('content', '')
-                            print(delta)
-                            if delta:
-                                yield delta
+                            if json_str:
+                                yield json_str
                         except (json.JSONDecodeError, KeyError) as e:
                             print(f"Ошибка парсинга: {e}")
 
@@ -127,7 +85,23 @@ def update_user_history(user_id, new_message):
         db_session.add(user)
     db_session.commit()
 
-# --- Обработчики Telegram-бота ---
+
+
+async def start(update: Update, context: CallbackContext):
+    """
+    Приветственное сообщение для команды /start с кнопками выбора языка.
+    """
+    keyboard = [
+        ['Русский \U0001F1F7\U0001F1FA',
+        'English \U0001F1EC\U0001F1E7'],
+        ['中文 \U0001F1E8\U0001F1F3']
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+    await update.message.reply_text(
+        "Выберите язык / Choose language / 请选择语言:",
+        reply_markup=reply_markup
+    )
+
 async def handle_message(update: Update, context: CallbackContext):
     """
     Обработчик сообщений от пользователя с потоковой передачей ответа.
@@ -135,7 +109,18 @@ async def handle_message(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     user_message = update.message.text
 
-    # Получаем историю пользователя
+    # Обработка выбора языка
+    if user_message in ['Русский \U0001F1F7\U0001F1FA', 'English \U0001F1EC\U0001F1E7', '中文 \U0001F1E8\U0001F1F3']:
+        if user_message == 'Русский \U0001F1F7\U0001F1FA':
+            response = "Вы выбрали русский язык \U0001F1F7\U0001F1FA. Как я могу вам помочь?"
+        elif user_message == 'English 🇬🇧':
+            response = "You have selected English \U0001F1EC\U0001F1E7. How can I help you?"
+        else:
+            response = "您选择了中文 \U0001F1E8\U0001F1F3。我能为您做什么？"
+        await update.message.reply_text(response, reply_markup=ReplyKeyboardRemove())
+        return
+
+    # Остальной код обработки сообщений
     history = get_user_history(user_id)
     history += f"\nПользователь: {user_message}"
     update_user_history(user_id, f"Пользователь: {user_message}")
@@ -197,13 +182,6 @@ async def handle_message(update: Update, context: CallbackContext):
 
     # Сохраняем ответ бота в историю
     update_user_history(user_id, f"Бот: {full_response[:20]}...")
-
-async def start(update: Update, context: CallbackContext):
-    """
-    Приветственное сообщение для команды /start.
-    """
-    
-    await update.message.reply_text("Привет, я ваш персональный помощник!")
 
 
 # --- Запуск приложения ---
