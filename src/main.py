@@ -256,7 +256,7 @@ async def handle_message(update: Update, context: CallbackContext):
 # --- Запуск приложения ---
 if __name__ == "__main__":
     # Создание бота и регистрация обработчиков
-    application = ApplicationBuilder().token("7583980596:AAELwT6OEXJwHCjPQFqNTwJ4X2RpvMrbAM4").build()
+    application = ApplicationBuilder().token("").build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("clear", clear_history))
